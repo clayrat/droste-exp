@@ -1,10 +1,11 @@
 import qq.droste._
-import qq.droste.data.list._
+import data._
+import list._
 import ListF._
+
 import cats.Functor
 
 import scala.math.Ordering
-import Ordering._
 
 // following Augusteijn, "Sorting morphisms" (https://pdfs.semanticscholar.org/87b2/6d98d4c3e2f7983d0b79fba83c1f359abe25.pdf)
 
@@ -29,6 +30,15 @@ object Sort {
 
   val prod = scheme.cata[ListF[Int, ?], List[Int], Int](prodAlg)
 
+  // ex 1
+
+  def revAlg[A] = Algebra[ListF[A, ?], List[A]] {
+    case NilF => Nil
+    case ConsF(h, t) => t :+ h
+  }
+
+  def revList[A] = scheme.cata[ListF[A, ?], List[A], List[A]](revAlg)
+
   // 2.2 ana
 
   val countCoalg = Coalgebra[ListF[Int, ?], Int] { n =>
@@ -36,6 +46,10 @@ object Sort {
   }
 
   val count = scheme.ana[ListF[Int, ?], Int, List[Int]](countCoalg)
+
+  val primeCoalg = Coalgebra[ListF[Int, ?], Int] { n =>
+
+  }
 
   // 2.3 hylo
 
@@ -106,29 +120,58 @@ object Sort {
 
   // 3 leaf trees
 
-  /*
-  sealed trait LeafTree[A]
-  case class Leaf[A](a: A) extends LeafTree[A]
-  case class Split[A](l: LeafTree[A], r: LeafTree[A]) extends LeafTree[A]
-*/
-
   sealed trait LeafTreeF[F, A]
   case class LeafF[F, A](a: A) extends LeafTreeF[F, A]
   case class SplitF[F, A](l: F, r: F) extends LeafTreeF[F, A]
 
-  implicit def functor[A]: Functor[LeafTreeF[?, A]] = new Functor[LeafTreeF[?, A]] {
+  type LeafTree[A] = Fix[LeafTreeF[?, A]]
+  def leaf[A](a: A): LeafTree[A] = Fix[LeafTreeF[?, A]](LeafF(a))
+  def split[A](l: LeafTree[A], r: LeafTree[A]): LeafTree[A] = Fix[LeafTreeF[?, A]](SplitF(l,r))
+
+  implicit def LTFProjLT[A] = new Project[LeafTreeF[?, A], LeafTree[A]] {
+    override def coalgebra = Fix.coalgebra[LeafTreeF[?, A]]
+  }
+
+  implicit def LTFEmbLT[A] = new Embed[LeafTreeF[?, A], LeafTree[A]] {
+    override def algebra = Fix.algebra[LeafTreeF[?, A]]
+  }
+
+  implicit def ltFunctor[A]: Functor[LeafTreeF[?, A]] = new Functor[LeafTreeF[?, A]] {
     override def map[B, C](fa: LeafTreeF[B, A])(f: B => C): LeafTreeF[C, A] = fa match {
       case SplitF(l, r) => SplitF(f(l), f(r))
       case LeafF(a)     => LeafF(a)
     }
   }
 
+  // 3.1 leaf-tree cata
+
+  val treeSumAlg = Algebra[LeafTreeF[?, Int], Int] {
+    case LeafF(a) => a
+    case SplitF(l, r) => l + r
+  }
+
+  val treeSum = scheme.cata[LeafTreeF[?, Int], LeafTree[Int], Int](treeSumAlg)
+
+  // 3.2 leaf-tree ana
+
+  def fibTreeRec(n : Int): LeafTree[Int] = if (n<2) leaf(1) else split(fibTreeRec(n-1), fibTreeRec(n-2))
+
+  val treeFibCoalg = Coalgebra[LeafTreeF[?, Int], Int] { n =>
+    if (n<2) LeafF(1) else SplitF(n-1, n-2)
+  }
+
+  val fibTree = scheme.ana[LeafTreeF[?, Int], Int, LeafTree[Int]](treeFibCoalg)
+
+  // 3.3 leaf-tree hylo
+
+  val fib = scheme.hylo[LeafTreeF[?, Int], Int, Int](treeSumAlg.run, treeFibCoalg.run)
+
   def main(args: Array[String]): Unit = {
 
     println(prod(List(3,2,1)))
+    println(revList(List(1,2,3,4)))
 
     println(count(3))
-
     println(fac(3))
 
     val unsorted = List(3,2,5,4,1)
@@ -138,6 +181,11 @@ object Sort {
     println(straightSelSort(unsorted))
     println(bubbleSort(unsorted))
     println(bubbleSort2(unsorted))
+
+    println(fibTreeRec(5))
+    println(fibTree(5))
+
+    println((0 to 10) map fib)
 
   }
 
