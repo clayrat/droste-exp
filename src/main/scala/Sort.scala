@@ -47,13 +47,19 @@ object Sort {
 
   val count = scheme.ana[ListF[Int, ?], Int, List[Int]](countCoalg)
 
-  val primeCoalg = Coalgebra[ListF[Int, ?], Int] { n =>
-
-  }
+  // TODO ex 2
 
   // 2.3 hylo
 
   val fac = scheme.hylo[ListF[Int, ?], Int, Int](prodAlg.run, countCoalg.run)
+
+  // ex 3
+
+  def repCoalg(x: Int) = Coalgebra[ListF[Int, ?], Int] { n =>
+    if (n == 0) NilF else ConsF(x, n-1)
+  }
+
+  def pow(x: Int) = scheme.hylo[ListF[Int, ?], Int, Int](prodAlg.run, repCoalg(x).run)
 
   // 2.4 insertion sort
 
@@ -166,6 +172,50 @@ object Sort {
 
   val fib = scheme.hylo[LeafTreeF[?, Int], Int, Int](treeSumAlg.run, treeFibCoalg.run)
 
+  // TODO ex 4
+
+  // TODO ex 5
+
+  // 3.4 merge sort
+
+  val selectTreeCoalg = {
+    val split = scheme.cata[ListF[Int, ?], List[Int], (List[Int], List[Int])](Algebra[ListF[Int, ?], (List[Int], List[Int])] {
+      case NilF => (Nil, Nil)
+      case ConsF(h, (l, r)) => (r, h::l)
+    })
+    Coalgebra[LeafTreeF[?, Int], List[Int]] {
+      case Nil => LeafF(0) // unreachable
+      case x::Nil => LeafF(x)
+      case xs =>
+        val (l, r) = split(xs)
+        SplitF(l, r)
+    }
+  }
+
+  val mergeAlg = {
+
+    def merge(x: List[Int], y: List[Int]): List[Int] = (x,y) match {
+      case (Nil, _) => y
+      case (_, Nil) => x
+      case (l::ls, r::rs) if l<r => l :: merge(ls, r::rs)
+      case (l::ls, r::rs) => r :: merge(l::ls, rs)
+    }
+
+    Algebra[LeafTreeF[?, Int], List[Int]] {
+      case LeafF(x) => List(x)
+      case SplitF(l, r) => merge(l, r)
+    }
+  }
+
+  def mergeSort(l : List[Int]) = l match {
+    case Nil => Nil
+    case xs =>
+      val m = scheme.hylo[LeafTreeF[?, Int], List[Int], List[Int]](mergeAlg.run, selectTreeCoalg.run)
+      m(xs)
+  }
+
+  // 4 binary trees
+
   def main(args: Array[String]): Unit = {
 
     println(prod(List(3,2,1)))
@@ -173,6 +223,8 @@ object Sort {
 
     println(count(3))
     println(fac(3))
+
+    println(pow(2)(8))
 
     val unsorted = List(3,2,5,4,1)
     val intSort = insertionSort[Int]
@@ -186,6 +238,8 @@ object Sort {
     println(fibTree(5))
 
     println((0 to 10) map fib)
+
+    println(mergeSort(unsorted))
 
   }
 
