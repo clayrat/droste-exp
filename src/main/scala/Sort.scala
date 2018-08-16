@@ -1,7 +1,6 @@
 import qq.droste._
 import data._
 import list._
-import ListF._
 import Basis._
 
 import cats.Functor
@@ -12,9 +11,9 @@ import scala.math.Ordering
 
 object Sort {
 
-  // TODO add to droste.FloatingBasisInstances?
-  implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
-    Basis.Default[ListF[A, ?], List[A]](toScalaListAlgebra, fromScalaListCoalgebra)
+  // TODO added to droste.Basis after 0.4.0
+    implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
+      Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
 
   // 2.1 cata
 
@@ -80,47 +79,45 @@ object Sort {
     case l@_ :: _ => extract(l)
   }
 
+  def selectionSort(extract: List[Int] => ListF[Int, List[Int]]) =
+    scheme.ana[ListF[Int, ?], List[Int], List[Int]](selectCoalg(extract))
+
   // 2.5.1 straight
 
-  def straightSelSort = {
-    def selExtract(l: List[Int]): ListF[Int, List[Int]] = {
-      def remove(x: Int, m: List[Int]): List[Int] = m match {
-        case Nil => Nil
-        case h :: t if x == h => t
-        case h :: t => h :: remove(x, t)
-      }
-
-      val m = l.min
-      ConsF(m, remove(m, l))
+  def selExtract(l: List[Int]): ListF[Int, List[Int]] = {
+    def remove(x: Int, m: List[Int]): List[Int] = m match {
+      case Nil => Nil
+      case h :: t if x == h => t
+      case h :: t => h :: remove(x, t)
     }
 
-    scheme.ana[ListF[Int, ?], List[Int], List[Int]](selectCoalg(selExtract))
+    val m = l.min
+    ConsF(m, remove(m, l))
   }
+
+  def straightSelSort = selectionSort(selExtract)
 
   // 2.5.2 bubble
 
-  def bubbleSort = {
-    def bubble(l: List[Int]): ListF[Int, List[Int]] = l match {
-      case Nil => NilF // unreachable
-      case h :: Nil => ConsF(h, Nil)
-      case h :: t =>
-        val ConsF(y, m) = bubble(t)
-        if (h < y) ConsF(h, y :: m) else ConsF(y, h :: m)
-    }
-
-    scheme.ana[ListF[Int, ?], List[Int], List[Int]](selectCoalg(bubble))
+  def bubble(l: List[Int]): ListF[Int, List[Int]] = l match {
+    case Nil => NilF // unreachable
+    case h :: Nil => ConsF(h, Nil)
+    case h :: t =>
+      val ConsF(y, m) = bubble(t)
+      if (h < y) ConsF(h, y :: m) else ConsF(y, h :: m)
   }
 
-  def bubbleSort2 = {
-    val bubbleAlg = Algebra[ListF[Int, ?], ListF[Int, List[Int]]] {
-      case NilF => NilF // unreachable
-      case ConsF(h, NilF) => ConsF(h, Nil)
-      case ConsF(h, ConsF(i, t)) => if (h < i) ConsF(h, i :: t) else ConsF(i, h :: t)
-    }
-    scheme.ana[ListF[Int, ?], List[Int], List[Int]](selectCoalg(
-      scheme.cata[ListF[Int, ?], List[Int], ListF[Int, List[Int]]](bubbleAlg)
-    ))
+  def bubbleSort = selectionSort(bubble)
+
+  val bubbleAlg = Algebra[ListF[Int, ?], ListF[Int, List[Int]]] {
+    case NilF => NilF // unreachable
+    case ConsF(h, NilF) => ConsF(h, Nil)
+    case ConsF(h, ConsF(i, t)) => if (h < i) ConsF(h, i :: t) else ConsF(i, h :: t)
   }
+
+  def bubbleSort2 = selectionSort(
+    scheme.cata[ListF[Int, ?], List[Int], ListF[Int, List[Int]]](bubbleAlg)
+  )
 
   // 3 leaf trees
 
@@ -319,6 +316,41 @@ object Sort {
 
   val heapsort = list2heap andThen heap2list
 
+  // 5.2 insert as paramorphism
+
+  def combineRAlg(x: Int) = RAlgebra[List[Int], ListF[Int, ?], List[Int]] {
+    case NilF => List(x)
+    case ConsF(h, (l, _)) if x < h => x :: h :: l
+    case ConsF(h, (_, rec)) => h :: rec
+  }
+
+  def insertP(x: Int) = scheme.zoo.para[ListF[Int, ?], List[Int], List[Int]](combineRAlg(x))
+
+  def insertAlg2[A: Ordering] = Algebra[ListF[Int, ?], List[Int]] {
+    case NilF => Nil
+    case ConsF(h, t) => insertP(h)(t)
+  }
+
+  val insertionSort2 = scheme.cata[ListF[Int, ?], List[Int], List[Int]](insertAlg2)
+
+  // 5.3 remove as paramorphism
+
+  def selExtractP(l: List[Int]): ListF[Int, List[Int]] = {
+
+    def removeRAlg(x: Int) = RAlgebra[List[Int], ListF[Int, ?], List[Int]] {
+      case NilF => Nil
+      case ConsF(h, (l, _)) if x == h => l
+      case ConsF(h, (_, rec)) => h :: rec
+    }
+
+    def remove(x: Int) = scheme.zoo.para[ListF[Int, ?], List[Int], List[Int]](removeRAlg(x))
+
+    val m = l.min
+    ConsF(m, remove(m)(l))
+  }
+
+  def straightSelSort2 = selectionSort(selExtractP)
+
   def main(args: Array[String]): Unit = {
 
     val unsorted = List(3, 2, 5, 4, 1)
@@ -352,6 +384,10 @@ object Sort {
     println(quicksort(unsorted))
 
     println(heapsort(unsorted))
+
+    println(insertionSort2(unsorted))
+
+    println(straightSelSort2(unsorted))
 
   }
 
