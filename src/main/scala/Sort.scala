@@ -12,8 +12,8 @@ import scala.math.Ordering
 object Sort {
 
   // TODO added to droste.Basis after 0.4.0
-    implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
-      Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
+  implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
+    Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
 
   // 2.1 cata
 
@@ -70,7 +70,9 @@ object Sort {
     case ConsF(h, t) => insert(h, t)
   }
 
-  def insertionSort[A: Ordering] = scheme.cata[ListF[A, ?], List[A], List[A]](insertAlg)
+  def insertionSortGen[A: Ordering] = scheme.cata[ListF[A, ?], List[A], List[A]](insertAlg)
+
+  val insertionSort = insertionSortGen[Int]
 
   // 2.5 selection sort
 
@@ -169,16 +171,20 @@ object Sort {
 
   // 3.4 merge sort
 
-  val selectTreeCoalg = {
-    val split = scheme.cata[ListF[Int, ?], List[Int], (List[Int], List[Int])](Algebra[ListF[Int, ?], (List[Int], List[Int])] {
+  // splits odd and even elements
+  def splitList[A] = scheme.cata[ListF[A, ?], List[A], (List[A], List[A])](
+    Algebra[ListF[A, ?], (List[A], List[A])] {
       case NilF => (Nil, Nil)
       case ConsF(h, (l, r)) => (r, h :: l)
-    })
+    }
+  )
+
+  val selectTreeCoalg = {
     Coalgebra[LeafTreeF[?, Int], List[Int]] {
       case Nil => LeafF(0) // unreachable
       case x :: Nil => LeafF(x)
       case xs =>
-        val (l, r) = split(xs)
+        val (l, r) = splitList(xs)
         SplitF(l, r)
     }
   }
@@ -273,7 +279,7 @@ object Sort {
       BranchF(x, s, g)
   }
 
-  val quicksort = scheme.hylo[BinTreeF[?, Int], List[Int], List[Int]](btJoinAlg, btSplitCoalg)
+  val quickSort = scheme.hylo[BinTreeF[?, Int], List[Int], List[Int]](btJoinAlg, btSplitCoalg)
 
   // TODO ex 9
 
@@ -320,7 +326,7 @@ object Sort {
 
   def combineRAlg(x: Int) = RAlgebra[List[Int], ListF[Int, ?], List[Int]] {
     case NilF => List(x)
-    case ConsF(h, (l, _)) if x < h => x :: h :: l
+    case ConsF(h, (l, _)) if x < h => x :: h :: l // TODO laziness?
     case ConsF(h, (_, rec)) => h :: rec
   }
 
@@ -351,6 +357,103 @@ object Sort {
 
   def straightSelSort2 = selectionSort(selExtractP)
 
+  // 6 generalizing
+
+  case class RoseTreeF[F, A](e: List[A], l: List[F])
+  type RoseTree[A] = Fix[RoseTreeF[?, A]]
+  def noRoses[A]: RoseTree[A] = Fix.apply[RoseTreeF[?, A]](RoseTreeF(List[A](), List[RoseTree[A]]()))
+  def single[A](e: A): RoseTree[A] = Fix.apply[RoseTreeF[?, A]](RoseTreeF(List(e), Nil))
+
+  implicit def rtFunctor[A]: Functor[RoseTreeF[?, A]] = new Functor[RoseTreeF[?, A]] {
+    override def map[B, C](fa: RoseTreeF[B, A])(f: B => C): RoseTreeF[C, A] =
+      fa.copy(l = fa.l.map(f))
+  }
+
+  // 6.1 generalizing quicksort
+
+  val joinAlg = Algebra[RoseTreeF[?, Int], List[Int]] { rt =>
+    rt.l match {
+      case Nil => rt.e
+      case s :: l => s ++ rt.e.zip(l).flatMap { case (h, t) => h :: t }
+    }
+  }
+
+  def breakCoalg(n: Int) = {
+    def takeDrop[A](n: Int, l: List[A]): (List[A], List[A]) =
+      if (n == 0)
+        (Nil, l)
+      else l match {
+        case Nil => (Nil, Nil)
+        case h :: t =>
+          val (a, b) = takeDrop(n - 1, t)
+          (h :: a, b)
+      }
+
+    def splitAlg(xs: List[Int]) = Algebra[ListF[Int, ?], List[List[Int]]] {
+      case NilF => List(xs)
+      case ConsF(h, Nil) => Nil // unreachable?
+      case ConsF(h, a :: l) =>
+        val (s, g) = a.partition(_ < h)
+        s :: g :: l
+    }
+
+    def split(xs: List[Int]) = scheme.cata[ListF[Int, ?], List[Int], List[List[Int]]](splitAlg(xs))
+
+    Coalgebra[RoseTreeF[?, Int], List[Int]] {
+      case Nil => RoseTreeF(Nil, Nil)
+      case l =>
+        val (xs, l2) = takeDrop(n, l)
+        val sx = insertionSort(xs)
+
+        RoseTreeF(sx, split(l2)(sx))
+    }
+  }
+
+  def roseSort(n: Int) = scheme.hylo[RoseTreeF[?, Int], List[Int], List[Int]](joinAlg, breakCoalg(n))
+
+  // 6.2 generalizing heapsort
+
+  def roseMeld(l: RoseTree[Int], r: RoseTree[Int]): RoseTree[Int] =
+    (Fix.un[RoseTreeF[?, Int]](l), Fix.un[RoseTreeF[?, Int]](r)) match {
+      case (RoseTreeF(Nil, _), ur) => Fix.apply[RoseTreeF[?, Int]](ur)
+      case (tr, RoseTreeF(Nil, _)) => Fix.apply[RoseTreeF[?, Int]](tr)
+      case (RoseTreeF(List(t), ts), ur@RoseTreeF(List(u), _)) if t < u =>
+        Fix.apply[RoseTreeF[?, Int]](RoseTreeF(List(t), Fix.apply[RoseTreeF[?, Int]](ur) :: ts))
+      case (tr@RoseTreeF(_, _), RoseTreeF(List(u), us)) =>
+        Fix.apply[RoseTreeF[?, Int]](RoseTreeF(List(u), Fix.apply[RoseTreeF[?, Int]](tr) :: us))
+    }
+
+  val rosesMeld = {
+    val idAlg = Algebra[LeafTreeF[?, RoseTree[Int]], RoseTree[Int]] {
+      case LeafF(a) => a
+      case SplitF(l, r) => roseMeld(l, r)
+    }
+    val selCoalg = Coalgebra[LeafTreeF[?, RoseTree[Int]], List[RoseTree[Int]]] {
+      case Nil => LeafF(noRoses[Int])
+      case a :: Nil => LeafF(a)
+      case l =>
+        val (a, b) = splitList(l)
+        SplitF(a, b)
+    }
+    scheme.hylo[LeafTreeF[?, RoseTree[Int]], List[RoseTree[Int]], RoseTree[Int]](idAlg, selCoalg)
+  }
+
+  val destructCoalg = Coalgebra[ListF[Int, ?], RoseTree[Int]] { rt =>
+    Fix.un[RoseTreeF[?, Int]](rt) match {
+      case RoseTreeF(Nil, _) => NilF
+      case RoseTreeF(a :: Nil, ts) => ConsF(a, rosesMeld(ts))
+      case RoseTreeF(_, _) => NilF // unreachable ?
+    }
+  }
+
+  val rose2list =
+    scheme.ana[ListF[Int, ?], RoseTree[Int], List[Int]](destructCoalg)
+
+  def list2rose(xs: List[Int]): RoseTree[Int] =
+    rosesMeld(xs.map(single))
+
+  def pairingSort(xs: List[Int]) = rose2list(list2rose(xs))
+
   def main(args: Array[String]): Unit = {
 
     val unsorted = List(3, 2, 5, 4, 1)
@@ -364,9 +467,7 @@ object Sort {
 
     println(pow(2)(8))
 
-    val intSort = insertionSort[Int]
-
-    println(intSort(unsorted))
+    println(insertionSort(unsorted))
     println(straightSelSort(unsorted))
     println(bubbleSort(unsorted))
     println(bubbleSort2(unsorted))
@@ -381,13 +482,17 @@ object Sort {
     println(facBT(10))
     println(powBT(2)(8))
 
-    println(quicksort(unsorted))
+    println(quickSort(unsorted))
 
     println(heapsort(unsorted))
 
     println(insertionSort2(unsorted))
 
     println(straightSelSort2(unsorted))
+
+    println(roseSort(2)(unsorted))
+
+    println(pairingSort(unsorted))
 
   }
 
