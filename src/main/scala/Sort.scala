@@ -1,11 +1,11 @@
+import scala.math.Ordering
+
+import cats.Functor
+
 import qq.droste._
 import data._
 import list._
 import Basis._
-
-import cats.Functor
-
-import scala.math.Ordering
 
 // following Augusteijn, "Sorting morphisms" (https://pdfs.semanticscholar.org/87b2/6d98d4c3e2f7983d0b79fba83c1f359abe25.pdf)
 
@@ -132,8 +132,7 @@ object Sort {
   def split[A](l: LeafTree[A], r: LeafTree[A]): LeafTree[A] = Fix[LeafTreeF[?, A]](SplitF(l, r))
 
   // not sure why is this needed
-  implicit def drosteBasisForLeafTreeF[A]: Basis[LeafTreeF[?, A], LeafTree[A]] =
-    drosteBasisForFix[LeafTreeF[?, A]]
+  implicit def drosteBasisForLeafTreeF[A] = drosteBasisForFix[LeafTreeF[?, A]]
 
   implicit def ltFunctor[A]: Functor[LeafTreeF[?, A]] = new Functor[LeafTreeF[?, A]] {
     override def map[B, C](fa: LeafTreeF[B, A])(f: B => C): LeafTreeF[C, A] = fa match {
@@ -153,7 +152,8 @@ object Sort {
 
   // 3.2 leaf-tree ana
 
-  def fibTreeRec(n: Int): LeafTree[Int] = if (n < 2) leaf(1) else split[Int](fibTreeRec(n - 1), fibTreeRec(n - 2))
+  def fibTreeRec(n: Int): LeafTree[Int] =
+    if (n < 2) leaf(1) else split[Int](fibTreeRec(n - 1), fibTreeRec(n - 2))
 
   val treeFibCoalg = Coalgebra[LeafTreeF[?, Int], Int] { n =>
     if (n < 2) LeafF(1) else SplitF(n - 1, n - 2)
@@ -207,8 +207,7 @@ object Sort {
   def mergeSort(l: List[Int]) = l match {
     case Nil => Nil
     case xs =>
-      val m = scheme.hylo[LeafTreeF[?, Int], List[Int], List[Int]](mergeAlg, selectTreeCoalg)
-      m(xs)
+      scheme.hylo[LeafTreeF[?, Int], List[Int], List[Int]](mergeAlg, selectTreeCoalg).apply(xs)
   }
 
   // 4 binary trees
@@ -229,8 +228,7 @@ object Sort {
   }
 
   // not sure why is this needed again
-  implicit def drosteBasisForBinTreeF[A]: Basis[BinTreeF[?, A], BinTree[A]] =
-    drosteBasisForFix[BinTreeF[?, A]]
+  implicit def drosteBasisForBinTreeF[A] = drosteBasisForFix[BinTreeF[?, A]]
 
   // ex 6
 
@@ -246,10 +244,9 @@ object Sort {
     case _ => TipF
   }
 
-  def facBT(n: Int): Int = {
-    val facRange = scheme.hylo[BinTreeF[?, Int], (Int, Int), Int](btreeProdAlg, countBTreeCoalg)
-    facRange(1, n + 1)
-  }
+  def facBT(n: Int): Int =
+    scheme.hylo[BinTreeF[?, Int], (Int, Int), Int](btreeProdAlg, countBTreeCoalg)
+      .apply(1, n + 1)
 
   // ex 7
 
@@ -287,10 +284,10 @@ object Sort {
 
   def combine(lt: BinTree[Int], rt: BinTree[Int]): BinTree[Int] =
     (Fix.un[BinTreeF[?, Int]](lt), Fix.un[BinTreeF[?, Int]](rt)) match {
-      case (t, TipF) => Fix.apply[BinTreeF[?, Int]](t)
-      case (TipF, t) => Fix.apply[BinTreeF[?, Int]](t)
-      case (BranchF(x, l, r), c@BranchF(y, _, _)) if x < y => branch[Int](x, l, combine(r, Fix.apply[BinTreeF[?, Int]](c)))
-      case (b, BranchF(y, s, t)) => branch[Int](y, combine(Fix.apply[BinTreeF[?, Int]](b), s), t)
+      case (t, TipF) => Fix[BinTreeF[?, Int]](t)
+      case (TipF, t) => Fix[BinTreeF[?, Int]](t)
+      case (BranchF(x, l, r), c@BranchF(y, _, _)) if x < y => branch[Int](x, l, combine(r, Fix[BinTreeF[?, Int]](c)))
+      case (b, BranchF(y, s, t)) => branch[Int](y, combine(Fix[BinTreeF[?, Int]](b), s), t)
     }
 
   val extractCoalg = Coalgebra[ListF[Int, ?], BinTree[Int]] { bt =>
@@ -361,8 +358,8 @@ object Sort {
 
   case class RoseTreeF[F, A](e: List[A], l: List[F])
   type RoseTree[A] = Fix[RoseTreeF[?, A]]
-  def noRoses[A]: RoseTree[A] = Fix.apply[RoseTreeF[?, A]](RoseTreeF(List[A](), List[RoseTree[A]]()))
-  def single[A](e: A): RoseTree[A] = Fix.apply[RoseTreeF[?, A]](RoseTreeF(List(e), Nil))
+  def noRoses[A]: RoseTree[A] = Fix[RoseTreeF[?, A]](RoseTreeF(List[A](), List[RoseTree[A]]()))
+  def single[A](e: A): RoseTree[A] = Fix[RoseTreeF[?, A]](RoseTreeF(List(e), Nil))
 
   implicit def rtFunctor[A]: Functor[RoseTreeF[?, A]] = new Functor[RoseTreeF[?, A]] {
     override def map[B, C](fa: RoseTreeF[B, A])(f: B => C): RoseTreeF[C, A] =
@@ -415,12 +412,12 @@ object Sort {
 
   def roseMeld(l: RoseTree[Int], r: RoseTree[Int]): RoseTree[Int] =
     (Fix.un[RoseTreeF[?, Int]](l), Fix.un[RoseTreeF[?, Int]](r)) match {
-      case (RoseTreeF(Nil, _), ur) => Fix.apply[RoseTreeF[?, Int]](ur)
-      case (tr, RoseTreeF(Nil, _)) => Fix.apply[RoseTreeF[?, Int]](tr)
+      case (RoseTreeF(Nil, _), ur) => Fix[RoseTreeF[?, Int]](ur)
+      case (tr, RoseTreeF(Nil, _)) => Fix[RoseTreeF[?, Int]](tr)
       case (RoseTreeF(List(t), ts), ur@RoseTreeF(List(u), _)) if t < u =>
-        Fix.apply[RoseTreeF[?, Int]](RoseTreeF(List(t), Fix.apply[RoseTreeF[?, Int]](ur) :: ts))
+        Fix[RoseTreeF[?, Int]](RoseTreeF(List(t), Fix[RoseTreeF[?, Int]](ur) :: ts))
       case (tr@RoseTreeF(_, _), RoseTreeF(List(u), us)) =>
-        Fix.apply[RoseTreeF[?, Int]](RoseTreeF(List(u), Fix.apply[RoseTreeF[?, Int]](tr) :: us))
+        Fix[RoseTreeF[?, Int]](RoseTreeF(List(u), Fix[RoseTreeF[?, Int]](tr) :: us))
     }
 
   val rosesMeld = {
