@@ -1,4 +1,6 @@
-import scala.math.Ordering
+import cats.Order
+import cats.syntax.order._
+import cats.instances.int._
 
 import cats.Functor
 
@@ -57,20 +59,19 @@ object Sort {
 
   // 2.4 insertion sort
 
-  def insert[A: Ordering](x: A, l: List[A]): List[A] = {
-    val ord = implicitly[Ordering[A]]
+  def insert[A: Order](x: A, l: List[A]): List[A] = {
     l match {
       case Nil => List(x)
-      case h :: t => if (ord.lt(x, h)) x :: h :: t else h :: insert(x, t)
+      case h :: t => if (x < h) x :: h :: t else h :: insert(x, t)
     }
   }
 
-  def insertAlg[A: Ordering] = Algebra[ListF[A, ?], List[A]] {
+  def insertAlg[A: Order] = Algebra[ListF[A, ?], List[A]] {
     case NilF => Nil
     case ConsF(h, t) => insert(h, t)
   }
 
-  def insertionSortGen[A: Ordering] = scheme.cata[ListF[A, ?], List[A], List[A]](insertAlg)
+  def insertionSortGen[A: Order] = scheme.cata[ListF[A, ?], List[A], List[A]](insertAlg)
 
   val insertionSort = insertionSortGen[Int]
 
