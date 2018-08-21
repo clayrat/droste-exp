@@ -6,6 +6,7 @@ import cats.instances.either._
 
 import qq.droste._
 import data._
+import util.DefaultTraverse
 
 // after https://jtobin.io/monadic-recursion-schemes
 
@@ -21,32 +22,12 @@ object Monadic {
   def lit(i: Int): Expr = Fix[ExprF](LitF(i))
   def add(l: Expr, r: Expr): Expr = Fix[ExprF](AddF(l, r))
 
-  implicit def exTraverse: Traverse[ExprF] = new Traverse[ExprF] {
-    override def map[A, B](fa: ExprF[A])(f: A => B): ExprF[B] = fa match {
-      case VarF(v) => VarF(v)
-      case LitF(i) => LitF(i)
-      case AddF(l, r) => AddF(f(l), f(r))
-    }
-
+  implicit def exTraverse: Traverse[ExprF] = new DefaultTraverse[ExprF] {
     override def traverse[G[_], A, B](fa: ExprF[A])(f: A => G[B])(implicit G: Applicative[G]): G[ExprF[B]] = fa match {
       case VarF(v) => G.pure(VarF(v))
       case LitF(i) => G.pure(LitF(i))
       case AddF(l, r) => G.map2(f(l), f(r))(AddF.apply)
     }
-
-    override def foldLeft[A, B](fa: ExprF[A], c: B)(f: (B, A) => B): B =
-      fa match {
-        case VarF(_) => c
-        case LitF(_) => c
-        case AddF(l, r) => f(f(c, l), r)
-      }
-
-    override def foldRight[A, B](fa: ExprF[A], lc: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
-      fa match {
-        case VarF(_) => lc
-        case LitF(_) => lc
-        case AddF(l, r) => f(l, f(r, lc))
-      }
   }
 
   val evalBad = scheme.cata[ExprF, Expr, Int](
