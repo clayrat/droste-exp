@@ -8,3 +8,4 @@ Recursion schemes with [Droste](https://github.com/andyscott/droste).
 * [Tobin, "Sorting Slower with Style"](https://jtobin.io/sorting-slower-with-style)
 * [Tobin, "Monadic Recursion Schemes"](https://jtobin.io/monadic-recursion-schemes)
 * [Tobin, "Time Traveling Recursion Schemes"](https://jtobin.io/time-traveling-recursion)
+* [Tobin, "Promorphisms, Pre and Post"](https://jtobin.io/promorphisms-pre-post)
