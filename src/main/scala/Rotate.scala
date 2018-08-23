@@ -41,9 +41,7 @@ object Rotate {
     scheme.cata[QuadTreeF[A, ?], QuadTree[A], List[List[A]]](
       Algebra[QuadTreeF[A, ?], List[List[A]]] {
         case NodeF(ul, ur, lr, ll) =>
-          val u = ul.zip(ur).map { case (l, r) => l ++ r }
-          val d = ll.zip(lr).map { case (l, r) => l ++ r }
-          u ++ d
+          (ul.zip(ur) ++ ll.zip(lr)).map { case (l, r) => l ++ r }
         case LeafF(a) => List(List(a))
         case EmptyF => Nil
       }
@@ -69,14 +67,18 @@ object Rotate {
     }
   )
 
-  def builderCoalg[A] = Coalgebra[QuadTreeF[A, ?], List[A]] {
-    case Nil => EmptyF
-    case x::Nil => LeafF(x)
-    case xs =>
-      val (ab, cd) = xs.splitAt(xs.length / 2)
-      val (a, b) = ab.splitAt(ab.length / 2)
-      val (c, d) = cd.splitAt(cd.length / 2)
-      NodeF(a, b, c, d)
+  def builderCoalg[A] = {
+    def inhalf(xs: List[A]): (List[A], List[A]) = xs.splitAt(xs.length / 2)
+
+    Coalgebra[QuadTreeF[A, ?], List[A]] {
+      case Nil => EmptyF
+      case x :: Nil => LeafF(x)
+      case xs =>
+        val (ab, cd) = inhalf(xs)
+        val (a, b) = inhalf(ab)
+        val (c, d) = inhalf(cd)
+        NodeF(a, b, c, d)
+    }
   }
 
   def consumerAlg[A] = Algebra[QuadTreeF[A, ?], List[A]] {
@@ -99,7 +101,7 @@ object Rotate {
 
     println
 
-    println(rotateList(List(1,2,3,4)))
+    println(rotateList((1 to 24).toList))
 
   }
 
