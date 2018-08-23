@@ -10,3 +10,4 @@ Recursion schemes with [Droste](https://github.com/andyscott/droste).
 * [Tobin, "Time Traveling Recursion Schemes"](https://jtobin.io/time-traveling-recursion)
 * [Tobin, "Promorphisms, Pre and Post"](https://jtobin.io/promorphisms-pre-post)
 * [Tobin, "Rotating Squares"](https://jtobin.io/rotating-squares)
+* [Tobin, "Yo Dawg We Heard You Like Derivatives"](https://jtobin.io/ad-via-recursion-schemes)
