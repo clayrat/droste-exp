@@ -1,16 +1,35 @@
 import scala.language.higherKinds
 
 import cats.data.{Kleisli, ReaderT}
-import cats.{Applicative, Eval, Traverse}
+import cats.{Applicative, Monad, Traverse}
 import cats.instances.either._
+import cats.instances.list._
+import cats.syntax.functor._
 
 import qq.droste._
 import data._
+import list._
+
 import util.DefaultTraverse
 
 // after https://jtobin.io/monadic-recursion-schemes
 
 object Monadic {
+
+  // TODO added to droste.Basis after 0.4.0
+  implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
+    Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
+
+  def filterM[M[_], A](fm: A => M[Boolean])(implicit M: Monad[M]): List[A] => M[List[A]] =
+    scheme.cataM[M, ListF[A, ?], List[A], List[A]](
+      AlgebraM[M, ListF[A, ?], List[A]] {
+        case NilF => M.pure(Nil)
+        case ConsF(h, t) => fm(h).map(if (_) h :: t else t)
+      }
+    )
+
+  def powerset[A](xs: List[A]): List[List[A]] =
+    filterM[List,A](_ => List(true, false)).apply(xs)
 
   sealed trait ExprF[F]
   case class VarF[F](s: String) extends ExprF[F]
@@ -67,6 +86,8 @@ object Monadic {
   )
 
   def main(args: Array[String]): Unit = {
+
+    println(powerset(List(1,2,3)))
 
     println(evalBad(add(lit(1), lit(2))))
 

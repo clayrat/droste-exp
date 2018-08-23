@@ -71,7 +71,7 @@ object Pro {
 
   // diy lazy lists
   sealed trait StreamF[+A, +B]
-  final case class PrependF[A, B](head: Eval[A], tail: Eval[B]) extends StreamF[A, B]
+  final case class PrependF[A, B](head: A, tail: Eval[B]) extends StreamF[A, B]
   case object EmptyF extends StreamF[Nothing, Nothing]
 
   implicit def streamFunctor[A]: Functor[StreamF[A, ?]] = new Functor[StreamF[A, ?]] {
@@ -83,18 +83,18 @@ object Pro {
 
   implicit def streamFEmbed[A] = new Embed[StreamF[A, ?], Stream[A]]{
     override def algebra = Algebra[StreamF[A, ?], Stream[A]] {
-    case PrependF(head, tail) => head.value #:: tail.value
+    case PrependF(head, tail) => head #:: tail.value
     case EmptyF => Stream.empty[A]
   }}
 
   val streamCoalg = Coalgebra[StreamF[Int, ?], Int] {
-    n => PrependF(Eval.now(n), Eval.now(n + 1))
+    n => PrependF(n, Eval.later(n + 1))
   }
 
   val smallS: StreamF[Int, ?] ~> StreamF[Int, ?] =
     λ[StreamF[Int, ?] ~> StreamF[Int, ?]] {
       case EmptyF => EmptyF
-      case t@PrependF(h, _) if h.value <= 10 => t
+      case t@PrependF(h, _) if h <= 10 => t
       case PrependF(_, _) => EmptyF
     }
 
