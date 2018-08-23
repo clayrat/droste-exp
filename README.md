@@ -9,3 +9,4 @@ Recursion schemes with [Droste](https://github.com/andyscott/droste).
 * [Tobin, "Monadic Recursion Schemes"](https://jtobin.io/monadic-recursion-schemes)
 * [Tobin, "Time Traveling Recursion Schemes"](https://jtobin.io/time-traveling-recursion)
 * [Tobin, "Promorphisms, Pre and Post"](https://jtobin.io/promorphisms-pre-post)
+* [Tobin, "Rotating Squares"](https://jtobin.io/rotating-squares)
