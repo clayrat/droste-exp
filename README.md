@@ -11,3 +11,4 @@ Recursion schemes with [Droste](https://github.com/andyscott/droste).
 * [Tobin, "Promorphisms, Pre and Post"](https://jtobin.io/promorphisms-pre-post)
 * [Tobin, "Rotating Squares"](https://jtobin.io/rotating-squares)
 * [Tobin, "Yo Dawg We Heard You Like Derivatives"](https://jtobin.io/ad-via-recursion-schemes)
+* [Thomson, "Recursion Schemes, Part V: Hello, Hylomorphisms"](https://blog.sumtypeofway.com/recursion-schemes-part-v/)
