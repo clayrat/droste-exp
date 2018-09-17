@@ -7,7 +7,7 @@ import cats.instances.tuple._
 
 import qq.droste._
 import data.list._
-import syntax.alias._
+import syntax.compose._
 
 // after https://blog.sumtypeofway.com/recursion-schemes-part-v/
 
@@ -27,10 +27,6 @@ object Elgot {
     case "/" => Token.Op(_ / _)
     case num => Token.Lit(num.toInt)
   }
-
-  // TODO added to droste.Basis after 0.4.0
-  implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
-    Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
 
   val parseRPNCoalg = Coalgebra[ListF[Token, ?], String] { s =>
     if (s.isEmpty) NilF

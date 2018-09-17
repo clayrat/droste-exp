@@ -2,7 +2,6 @@ import cats.Functor
 
 import qq.droste._
 import data._
-import Basis._
 
 // after https://jtobin.io/ad-via-recursion-schemes
 
@@ -17,6 +16,7 @@ object AD {
   case class ProductF[R](a: R, b: R) extends ExprF[R]
   case class ExpF[R](a: R) extends ExprF[R]
 
+  // TODO use derivation
   implicit def qtFunctor: Functor[ExprF] = new Functor[ExprF] {
     override def map[A, B](fa: ExprF[A])(f: A => B): ExprF[B] = fa match {
       case VarF => VarF

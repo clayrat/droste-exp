@@ -1,6 +1,7 @@
 import cats.Order
 import cats.syntax.order._
 import cats.instances.int._
+
 import qq.droste._
 import data._
 import list._
@@ -8,10 +9,6 @@ import list._
 // after https://jtobin.io/sorting-slower-with-style
 
 object Apo {
-
-  // TODO added to droste.Basis after 0.4.0
-  implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
-    Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
 
   def mapHead[A](f: A => A) =
     scheme.zoo.apo[ListF[A, ?], List[A], List[A]](

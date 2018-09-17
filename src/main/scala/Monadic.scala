@@ -16,10 +16,6 @@ import util.DefaultTraverse
 
 object Monadic {
 
-  // TODO added to droste.Basis after 0.4.0
-  implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
-    Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
-
   def filterM[M[_], A](fm: A => M[Boolean])(implicit M: Monad[M]): List[A] => M[List[A]] =
     scheme.cataM[M, ListF[A, ?], List[A], List[A]](
       AlgebraM[M, ListF[A, ?], List[A]] {
@@ -41,6 +37,7 @@ object Monadic {
   def lit(i: Int): Expr = Fix[ExprF](LitF(i))
   def add(l: Expr, r: Expr): Expr = Fix[ExprF](AddF(l, r))
 
+  // TODO use derivation in 0.5
   implicit def exTraverse: Traverse[ExprF] = new DefaultTraverse[ExprF] {
     override def traverse[G[_], A, B](fa: ExprF[A])(f: A => G[B])(implicit G: Applicative[G]): G[ExprF[B]] = fa match {
       case VarF(v) => G.pure(VarF(v))
@@ -68,7 +65,7 @@ object Monadic {
     }
   )
 
-  // why
+  // TODO why
   implicit val readEithMonad: cats.Monad[ReaderT[Either[Error, ?], Map[String, Int], ?]] =
     Kleisli.catsDataMonadForKleisli[Either[Error, ?], Map[String, Int]]
 

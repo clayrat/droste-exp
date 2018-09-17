@@ -13,10 +13,6 @@ import Basis._
 
 object Sort {
 
-  // TODO added to droste.Basis after 0.4.0
-  implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
-    Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
-
   // 2.1 cata
 
   val prodAlg = Algebra[ListF[Int, ?], Int] {

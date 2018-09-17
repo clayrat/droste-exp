@@ -6,4 +6,4 @@ scalaVersion := "2.12.6"
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 
-libraryDependencies += "io.higherkindness" %% "droste-core" % "0.4.0"
+libraryDependencies += "io.higherkindness" %% "droste-core" % "0.5.0"

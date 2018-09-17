@@ -1,18 +1,14 @@
-import cats.free.Yoneda
 import cats.{Functor, ~>}
 
 import qq.droste._
-import qq.droste.data.list._
+import data.list._
+import scheme.zoo._
 
 import cats.Eval
 
 // after https://jtobin.io/promorphisms-pre-post
 
 object Pro {
-
-  // TODO added to droste.Basis after 0.4.0
-  implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
-    Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
 
   val smallSumAlg = Algebra[ListF[Int, ?], Int] {
     case ConsF(h, t) => if (h <= 10) h + t else 0
@@ -27,25 +23,6 @@ object Pro {
   val smallSum = scheme.cata[ListF[Int, ?], List[Int], Int](smallSumAlg)
 
   val smallLen = scheme.cata[ListF[Int, ?], List[Int], Int](smallLenAlg)
-
-  // TODO add to droste
-  def prepro[F[_] : Functor, R, B](
-                                    natTrans: F ~> F,
-                                    algebra: Algebra[F, B],
-                                  )(implicit project: Project[F, R]): R => B =
-    kernel.hylo[Yoneda[F, ?], R, B](
-      yfb => algebra.run(yfb.mapK(natTrans).run),
-      project.coalgebra.run.andThen(Yoneda.apply[F, R])
-    )
-
-  def postpro[F[_] : Functor, A, R](
-                                     natTrans: F ~> F,
-                                     coalgebra: Coalgebra[F, A],
-                                   )(implicit embed: Embed[F, R]): A => R =
-    kernel.hylo[Yoneda[F, ?], A, R](
-      yfb => embed.algebra.run(yfb.run),
-      coalgebra.run.andThen(fa => Yoneda.apply[F, A](fa).mapK(natTrans))
-    )
 
   // decoupled
 
@@ -98,7 +75,7 @@ object Pro {
       case PrependF(_, _) => EmptyF
     }
 
-  val smallStream = postpro[StreamF[Int, ?], Int, Stream[Int]](smallS, streamCoalg)
+  val smallStream = postpro[StreamF[Int, ?], Int, Stream[Int]](streamCoalg, smallS)
 
   def main(args: Array[String]): Unit = {
 

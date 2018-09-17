@@ -34,6 +34,7 @@ object Rotate {
   def empty[A]: QuadTree[A] =
     Fix[QuadTreeF[A, ?]](EmptyF)
 
+  // TODO why
   implicit def drosteBasisForQuadTreeF[A] =
     drosteBasisForFix[QuadTreeF[A, ?]]
 

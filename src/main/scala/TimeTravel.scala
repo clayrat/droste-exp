@@ -8,17 +8,13 @@ import list._
 
 object TimeTravel {
 
-  // TODO added to droste.Basis after 0.4.0
-  implicit def drosteBasisForListF[A]: Basis[ListF[A, ?], List[A]] =
-    Basis.Default[ListF[A, ?], List[A]](ListF.toScalaListAlgebra, ListF.fromScalaListCoalgebra)
-
   // TODO https://github.com/andyscott/droste/issues/59
   def oddIndices[A] = scheme.zoo.histo[ListF[A, ?], List[A], List[A]](
     CVAlgebra[ListF[A, ?], List[A]] {
       case NilF => Nil
-      case ConsF(h, coa) => Cofree.un[ListF[A, ?], List[A]](coa) match {
+      case ConsF(h, coa) => Attr.un[ListF[A, ?], List[A]](coa) match {
         case (_, NilF) => List(h)
-        case (_, ConsF(_, coa2)) => h :: Cofree.un[ListF[A, ?], List[A]](coa2)._1
+        case (_, ConsF(_, coa2)) => h :: Attr.un[ListF[A, ?], List[A]](coa2)._1
       }
       //case ConsF(h, _ :< NilF) => List(h)
       //case ConsF(h, _ :< ConsF(_, t :< _)) => h :: t
@@ -28,9 +24,9 @@ object TimeTravel {
   def evenIndices[A] = scheme.zoo.histo[ListF[A, ?], List[A], List[A]](
     CVAlgebra[ListF[A, ?], List[A]] {
       case NilF => Nil
-      case ConsF(_, coa) => Cofree.un[ListF[A, ?], List[A]](coa) match {
+      case ConsF(_, coa) => Attr.un[ListF[A, ?], List[A]](coa) match {
         case (_, NilF) => Nil
-        case (_, ConsF(h, coa2)) => h :: Cofree.un[ListF[A, ?], List[A]](coa2)._1
+        case (_, ConsF(h, coa2)) => h :: Attr.un[ListF[A, ?], List[A]](coa2)._1
       }
       //case ConsF(_, _ :< NilF) => Nil
       //case ConsF(_, _ :< ConsF(h, t :< _)) => h :: t
@@ -40,8 +36,8 @@ object TimeTravel {
   def oddIndicesF[A] = scheme.zoo.futu[ListF[A, ?], List[A], List[A]](
     CVCoalgebra[ListF[A, ?], List[A]] {
       case Nil => NilF
-      case x :: Nil => ConsF(x, Free.pure[ListF[A, ?], List[A]](Nil))
-      case x :: _ :: t => ConsF(x, Free.pure[ListF[A, ?], List[A]](t))
+      case x :: Nil => ConsF(x, Coattr.pure[ListF[A, ?], List[A]](Nil))
+      case x :: _ :: t => ConsF(x, Coattr.pure[ListF[A, ?], List[A]](t))
     }
   )
 
@@ -49,13 +45,13 @@ object TimeTravel {
     CVCoalgebra[ListF[A, ?], List[A]] {
       case Nil => NilF
       case _ :: Nil => NilF
-      case _ :: h :: t => ConsF(h, Free.pure[ListF[A, ?], List[A]](t))
+      case _ :: h :: t => ConsF(h, Coattr.pure[ListF[A, ?], List[A]](t))
     }
   )
 
-  def nilFr[A, B]: Free[ListF[A, ?], B] = Free.roll[ListF[A, ?], B](NilF)
+  def nilFr[A, B]: Coattr[ListF[A, ?], B] = Coattr.roll[ListF[A, ?], B](NilF)
 
-  def consFr[A, B](a: A, b: B): Free[ListF[A, ?], B] = Free.roll[ListF[A, ?], B](ConsF(a, Free.pure[ListF[A, ?], B](b)))
+  def consFr[A, B](a: A, b: B): Coattr[ListF[A, ?], B] = Coattr.roll[ListF[A, ?], B](ConsF(a, Coattr.pure[ListF[A, ?], B](b)))
 
   def twiddle[A] = scheme.zoo.futu[ListF[A, ?], List[A], List[A]](
     CVCoalgebra[ListF[A, ?], List[A]] {
