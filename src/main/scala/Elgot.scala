@@ -16,8 +16,11 @@ object Elgot {
   sealed trait Token
 
   object Token {
+
     case class Lit(i: Int) extends Token
+
     case class Op(f: (Int, Int) => Int) extends Token
+
   }
 
   def parseToken(s: String): Token = s match {
@@ -56,6 +59,8 @@ object Elgot {
 
   // TODO add to Droste?
 
+  // ***********
+
   type ElgotCoalgebra[E[_], F[_], A] = GCoalgebra[(E ∘ F)#λ, A, A]
   type ElgotAlgebra[E[_], F[_], A] = GAlgebra[(E ∘ F)#λ, A, A]
 
@@ -76,12 +81,20 @@ object Elgot {
       coalgebra.run)
 
   def coelgot[F[_] : Functor, A, B](
-                                   algebra: ElgotAlgebra[(A, ?), F, B],
-                                   coalgebra: Coalgebra[F, A]
-                                 ): A => B =
+                                     algebra: ElgotAlgebra[(A, ?), F, B],
+                                     coalgebra: Coalgebra[F, A]
+                                   ): A => B =
     kernel.hyloC[(A, ?), F, A, B](
       algebra.run,
       a => (a, coalgebra(a)))
+
+  // Anamorphism that allows shortcuts
+  def micro[F[_] : Functor, A, B](
+                                   coalgebra: ElgotCoalgebra[Either[B, ?], F, A]
+                                 )(implicit embed: Embed[F, B]): A => B =
+    elgot[F, A, B](embed.algebra, coalgebra)
+
+  // ***********
 
   sealed trait Result
 
@@ -131,6 +144,17 @@ object Elgot {
       .apply(s)
       .apply(Result.Success(Nil))
 
+  val collatzCoalgebra = ElgotCoalgebra[Either[List[Int], ?], ListF[Int, ?], Int] {
+    case 1               => Left(List(1))
+    case 2               => Left(List(2, 1))
+    case 3               => Left(List(3, 10, 5, 16, 8, 4, 2, 1))
+    case 4               => Left(List(6, 3, 10, 5, 16, 8, 4, 2, 1))
+    case n if n % 2 == 0 => Right(ConsF(n, n/ 2))
+    case n               => Right(ConsF(n, 3 * n + 1))
+  }
+
+  val collatz = micro[ListF[Int, ?], Int, List[Int]](collatzCoalgebra)
+
   def main(args: Array[String]): Unit = {
 
     println(rpn("15 7 1 1 + - / 3 * 2 1 1 + + -"))
@@ -140,6 +164,8 @@ object Elgot {
     println(safeRpn("1 +"))
 
     println(safeRpn("1 aa"))
+
+    println(collatz(12))
 
   }
 
